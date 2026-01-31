@@ -131,15 +131,20 @@ const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyBfCF6tLybiWd-WQSfV
 let data = JSON.parse(localStorage.getItem("data")) || [];
 let editIndex = -1;
 
-function kirimKeSpreadsheet(obj) {
-    fetch(URL_SCRIPT, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(obj)
-    })
-    .then(res => res.text())
-    .then(res => console.log("Terkirim ke spreadsheet:", res))
-    .catch(err => console.error("Gagal kirim:", err));
+function kirimKeSpreadsheet(data) {
+  const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyBfCF6tLybiWd-WQSfVl1iTpKEc2Qnqq5iMDqamkLuODLHlmq44yJeZvLF-frqfJ0YvA/exec";
+
+  fetch(URL_SCRIPT, {
+    method: "POST",
+    body: JSON.stringify(data)
+  })
+  .then(res => res.text())
+  .then(res => {
+    console.log("Terkirim ke spreadsheet:", res);
+  })
+  .catch(err => {
+    console.error("Gagal kirim:", err);
+  });
 }
 
 function updateJenis(selectedValue = "") {
