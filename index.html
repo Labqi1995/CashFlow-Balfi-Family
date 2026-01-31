@@ -6,81 +6,69 @@
 <title>Catatan Keuangan</title>
 
 <style>
-    body {
-        font-family: Arial, sans-serif;
-        background: #f2f2f2;
-        padding: 15px;
-        display: flex;
-        justify-content: center;
-    }
+body {
+    font-family: Arial, sans-serif;
+    background: #f2f2f2;
+    padding: 15px;
+    display: flex;
+    justify-content: center;
+}
+.container {
+    width: 100%;
+    max-width: 650px;
+}
+h2 { text-align: center; }
 
-    .container {
-        width: 100%;
-        max-width: 650px;
-    }
+input, select, button {
+    width: 100%;
+    padding: 12px;
+    margin: 6px 0;
+    font-size: 16px;
+    box-sizing: border-box;
+}
 
-    h2 {
-        text-align: center;
-    }
+button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
 
-    input, select, button {
-        width: 100%;
-        padding: 12px;
-        margin: 6px 0;
-        font-size: 16px;
-        box-sizing: border-box;
-    }
-
-    button {
-        background: #4CAF50;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-    }
-
-    table {
-        width: 100%;
-        margin-top: 10px;
-        border-collapse: collapse;
-        background: white;
-    }
-
-    th, td {
-        padding: 8px;
-        border-bottom: 1px solid #ddd;
-        text-align: center;
-        font-size: 14px;
-    }
-
-    th {
-        background: #4CAF50;
-        color: white;
-    }
-
-    .aksi button {
-        width: auto;
-        padding: 5px 8px;
-        margin: 0 2px;
-        font-size: 12px;
-    }
-
-    .hapus {
-        background: #e74c3c;
-    }
-
-    .total {
-        margin-top: 10px;
-        font-weight: bold;
-        text-align: center;
-        font-size: 18px;
-    }
+table {
+    width: 100%;
+    margin-top: 10px;
+    border-collapse: collapse;
+    background: white;
+}
+th, td {
+    padding: 8px;
+    border-bottom: 1px solid #ddd;
+    text-align: center;
+    font-size: 14px;
+}
+th {
+    background: #4CAF50;
+    color: white;
+}
+.aksi button {
+    width: auto;
+    padding: 5px 8px;
+    margin: 0 2px;
+    font-size: 12px;
+}
+.hapus { background: #e74c3c; }
+.total {
+    margin-top: 10px;
+    font-weight: bold;
+    text-align: center;
+    font-size: 18px;
+}
 </style>
 </head>
 <body>
 
 <div class="container">
-
 <h2>Catatan Keuangan</h2>
 
 <select id="user">
@@ -122,29 +110,30 @@
 </table>
 
 <div class="total" id="total">Saldo: Rp 0</div>
-
 </div>
 
 <script>
-const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyBfCF6tLybiWd-WQSfVl1iTpKEc2Qnqq5iMDqamkLuODLHlmq44yJeZvLF-frqfJ0YvA/exec"; // <-- GANTI DENGAN URL WEB APP APPS SCRIPT
+const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyBfCF6tLybiWd-WQSfVl1iTpKEc2Qnqq5iMDqamkLuODLHlmq44yJeZvLF-frqfJ0YvA/exec"; // ganti dengan URL /exec terbaru
 
 let data = JSON.parse(localStorage.getItem("data")) || [];
 let editIndex = -1;
 
-function kirimKeSpreadsheet(data) {
-  const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyBfCF6tLybiWd-WQSfVl1iTpKEc2Qnqq5iMDqamkLuODLHlmq44yJeZvLF-frqfJ0YvA/exec";
+function kirimKeSpreadsheet(obj) {
+  const formData = new FormData();
+  formData.append("user", obj.user);
+  formData.append("tgl", obj.tgl);
+  formData.append("kategori", obj.kat);
+  formData.append("jenis", obj.jenis);
+  formData.append("jumlah", obj.jml);
+  formData.append("keterangan", obj.ket);
 
   fetch(URL_SCRIPT, {
     method: "POST",
-    body: JSON.stringify(data)
+    body: formData
   })
   .then(res => res.text())
-  .then(res => {
-    console.log("Terkirim ke spreadsheet:", res);
-  })
-  .catch(err => {
-    console.error("Gagal kirim:", err);
-  });
+  .then(res => console.log("Terkirim ke spreadsheet:", res))
+  .catch(err => console.error("Gagal kirim:", err));
 }
 
 function updateJenis(selectedValue = "") {
@@ -153,14 +142,11 @@ function updateJenis(selectedValue = "") {
     jenisSelect.innerHTML = '<option value="">Pilih Jenis Transaksi</option>';
 
     let opsi = [];
-
     if (kategori === "Uang Masuk") {
         opsi = ["Gaji", "Other"];
     } else if (kategori === "Uang Keluar") {
-        opsi = [
-            "Jajan","Dapur","Tagihan","Anak","Orang Tua",
-            "Transport","Kebutuhan & Hiburan","Nabung","Other"
-        ];
+        opsi = ["Jajan","Dapur","Tagihan","Anak","Orang Tua",
+                "Transport","Kebutuhan & Hiburan","Nabung","Other"];
     }
 
     opsi.forEach(teks => {
@@ -194,7 +180,7 @@ function render() {
         list.appendChild(row);
 
         if (d.kat === "Uang Masuk") saldo += d.jml;
-        if (d.kat === "Uang Keluar") saldo -= d.jml;
+        else saldo -= d.jml;
     });
 
     document.getElementById("total").innerText =
@@ -216,8 +202,7 @@ function tambah() {
 
     let obj = { user: usr, tgl, kat, jenis: jns, jml, ket };
 
-    // kirim ke Google Spreadsheet
-    kirimKeSpreadsheet(obj);
+    kirimKeSpreadsheet(obj); // kirim ke Google Sheet
 
     if (editIndex === -1) {
         data.push(obj);
@@ -268,6 +253,5 @@ function resetForm() {
 
 render();
 </script>
-
 </body>
 </html>
