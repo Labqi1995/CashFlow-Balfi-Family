@@ -103,3 +103,166 @@
 
 <input type="number" id="jumlah" placeholder="Jumlah (Rp)">
 <input type="text" id="keterangan" placeholder="Keterangan">
+
+<button onclick="tambah()" id="btnSimpan">Tambah</button>
+
+<table>
+<thead>
+<tr>
+    <th>User</th>
+    <th>Tgl</th>
+    <th>Kategori</th>
+    <th>Jenis</th>
+    <th>Nominal</th>
+    <th>Keterangan</th>
+    <th>Aksi</th>
+</tr>
+</thead>
+<tbody id="list"></tbody>
+</table>
+
+<div class="total" id="total">Saldo: Rp 0</div>
+
+</div>
+
+<script>
+const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyBfCF6tLybiWd-WQSfVl1iTpKEc2Qnqq5iMDqamkLuODLHlmq44yJeZvLF-frqfJ0YvA/exec"; // <-- GANTI DENGAN URL WEB APP APPS SCRIPT
+
+let data = JSON.parse(localStorage.getItem("data")) || [];
+let editIndex = -1;
+
+function kirimKeSpreadsheet(obj) {
+    fetch(URL_SCRIPT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(obj)
+    })
+    .then(res => res.text())
+    .then(res => console.log("Terkirim ke spreadsheet:", res))
+    .catch(err => console.error("Gagal kirim:", err));
+}
+
+function updateJenis(selectedValue = "") {
+    const kategori = document.getElementById("kategori").value;
+    const jenisSelect = document.getElementById("jenis");
+    jenisSelect.innerHTML = '<option value="">Pilih Jenis Transaksi</option>';
+
+    let opsi = [];
+
+    if (kategori === "Uang Masuk") {
+        opsi = ["Gaji", "Other"];
+    } else if (kategori === "Uang Keluar") {
+        opsi = [
+            "Jajan","Dapur","Tagihan","Anak","Orang Tua",
+            "Transport","Kebutuhan & Hiburan","Nabung","Other"
+        ];
+    }
+
+    opsi.forEach(teks => {
+        let opt = document.createElement("option");
+        opt.value = teks;
+        opt.textContent = teks;
+        if (teks === selectedValue) opt.selected = true;
+        jenisSelect.appendChild(opt);
+    });
+}
+
+function render() {
+    let list = document.getElementById("list");
+    list.innerHTML = "";
+    let saldo = 0;
+
+    data.forEach((d, i) => {
+        let row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${d.user}</td>
+            <td>${d.tgl}</td>
+            <td>${d.kat}</td>
+            <td>${d.jenis}</td>
+            <td>${d.jml.toLocaleString("id-ID")}</td>
+            <td>${d.ket}</td>
+            <td class="aksi">
+                <button onclick="editData(${i})">Edit</button>
+                <button class="hapus" onclick="hapusData(${i})">Hapus</button>
+            </td>
+        `;
+        list.appendChild(row);
+
+        if (d.kat === "Uang Masuk") saldo += d.jml;
+        if (d.kat === "Uang Keluar") saldo -= d.jml;
+    });
+
+    document.getElementById("total").innerText =
+        "Saldo: Rp " + saldo.toLocaleString("id-ID");
+}
+
+function tambah() {
+    let usr = user.value;
+    let tgl = tanggal.value;
+    let kat = kategori.value;
+    let jns = jenis.value;
+    let jml = parseInt(jumlah.value);
+    let ket = keterangan.value;
+
+    if (!usr || !tgl || !kat || !jns || !jml || !ket) {
+        alert("Lengkapi data!");
+        return;
+    }
+
+    let obj = { user: usr, tgl, kat, jenis: jns, jml, ket };
+
+    // kirim ke Google Spreadsheet
+    kirimKeSpreadsheet(obj);
+
+    if (editIndex === -1) {
+        data.push(obj);
+    } else {
+        data[editIndex] = obj;
+        editIndex = -1;
+        btnSimpan.innerText = "Tambah";
+    }
+
+    localStorage.setItem("data", JSON.stringify(data));
+    render();
+    resetForm();
+}
+
+function editData(i) {
+    let d = data[i];
+    editIndex = i;
+
+    user.value = d.user;
+    tanggal.value = d.tgl;
+    kategori.value = d.kat;
+    updateJenis(d.jenis);
+    jumlah.value = d.jml;
+    keterangan.value = d.ket;
+
+    btnSimpan.innerText = "Simpan Perubahan";
+}
+
+function hapusData(i) {
+    if (confirm("Hapus transaksi ini?")) {
+        data.splice(i, 1);
+        localStorage.setItem("data", JSON.stringify(data));
+        render();
+        resetForm();
+    }
+}
+
+function resetForm() {
+    user.value = "";
+    tanggal.value = "";
+    kategori.value = "";
+    jenis.innerHTML = '<option value="">Pilih Jenis Transaksi</option>';
+    jumlah.value = "";
+    keterangan.value = "";
+    editIndex = -1;
+    btnSimpan.innerText = "Tambah";
+}
+
+render();
+</script>
+
+</body>
+</html>
