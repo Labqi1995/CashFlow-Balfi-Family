@@ -120,14 +120,8 @@ th {
         <option>Uang Keluar</option>
     </select>
 
-    <input type="month" id="fBulan">
-
-    <select id="limit">
-        <option value="10">10 Data</option>
-        <option value="25">25 Data</option>
-        <option value="50">50 Data</option>
-        <option value="100">100 Data</option>
-    </select>
+    <input type="date" id="fFrom">
+    <input type="date" id="fTo">
 
     <button onclick="loadData()">Terapkan Filter</button>
 </div>
@@ -156,6 +150,16 @@ th {
 
 <button onclick="simpan()">💾 Simpan</button>
 
+<div style="display:flex;justify-content:flex-end">
+  <select id="limit" style="width:120px" onchange="loadData()">
+    <option value="10">10 Data</option>
+    <option value="25">25 Data</option>
+    <option value="50">50 Data</option>
+    <option value="100">100 Data</option>
+  </select>
+</div>
+
+
 <div class="table-wrap">
 <table>
 <thead>
@@ -166,6 +170,7 @@ th {
     <th>Jenis</th>
     <th>Nominal</th>
     <th>Keterangan</th>
+    <th>Aksi</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
@@ -174,6 +179,9 @@ th {
 
 <div class="total" id="total">Saldo: Rp 0</div>
 </div>
+
+<canvas id="chart" height="200"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
 const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyh0JwT1QXYqMx7r1tgK9xPo81T24SB3JvHns2pn3xCVxHCTmWs2fVnz1cWhrCNlw8PEA/exec";
@@ -187,6 +195,12 @@ function toggleFilter(){
 function formatRupiah(el){
     let angka = el.value.replace(/\D/g,"");
     el.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g,".");
+}
+
+/* FORMAT TANGGAL */
+function formatTanggal(tgl){
+  const d = new Date(tgl);
+  return d.toLocaleDateString("id-ID");
 }
 
 /* JENIS */
@@ -242,30 +256,62 @@ function resetForm(){
 
 /* LOAD DATA */
 function loadData(){
-    let url = URL_SCRIPT + "?action=read"
-        + "&user=" + fUser.value
-        + "&kategori=" + fKategori.value
-        + "&bulan=" + fBulan.value
-        + "&limit=" + limit.value;
+  let url = URL_SCRIPT + "?action=read"
+    + "&user=" + fUser.value
+    + "&kategori=" + fKategori.value
+    + "&from=" + fFrom.value
+    + "&to=" + fTo.value
+    + "&limit=" + limit.value;
 
-    fetch(url)
-    .then(r=>r.json())
-    .then(showData);
+  fetch(url).then(r=>r.json()).then(showData);
 }
+
+/* HAPUS DATA */
+function hapus(id){
+  if(!confirm("Hapus data ini?")) return;
+  fetch(URL_SCRIPT+"?action=delete&id="+id)
+    .then(()=>loadData());
+}
+
+/* GRAFIK BULANAN OTOMATIS */
+let chart;
+
+function renderChart(rows){
+  let map = {};
+  rows.forEach(d=>{
+    let bulan = d.tanggal.substr(0,7);
+    map[bulan] = (map[bulan]||0) + 
+      (d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah);
+  });
+
+  let labels = Object.keys(map);
+  let data = Object.values(map);
+
+  if(chart) chart.destroy();
+  chart = new Chart(chartCanvas,{
+    type:"bar",
+    data:{labels,datasets:[{label:"Saldo",data}]}
+  });
+}
+
 
 function showData(rows){
     list.innerHTML="";
     let saldo=0;
+    renderChart(rows);
 
     rows.forEach(d=>{
         let tr=document.createElement("tr");
         tr.innerHTML=`
             <td>${d.user}</td>
-            <td>${d.tanggal}</td>
+            <td>${formatTanggal(d.tanggal)}</td>
             <td>${d.kategori}</td>
             <td>${d.jenis}</td>
             <td>${Number(d.jumlah).toLocaleString("id-ID")}</td>
             <td>${d.keterangan}</td>
+            <td>
+                <button onclick="hapus('${d.id}')">🗑</button>
+            </td>
         `;
         list.appendChild(tr);
         saldo += d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah;
