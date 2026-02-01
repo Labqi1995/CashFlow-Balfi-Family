@@ -235,6 +235,18 @@ function loadData(){
     .then(showData);
 }
 
+/* EDIT */
+function edit(d){
+ editId=d.id;
+ user.value=d.user;
+ tanggal.value=d.tanggal;
+ kategori.value=d.kategori;
+ updateJenis();
+ jenis.value=d.jenis;
+ jumlah.value=d.jumlah;
+ keterangan.value=d.keterangan;
+}
+
 /* DELETE */
 function hapus(id){
   if(!confirm("Hapus data ini?")) return;
