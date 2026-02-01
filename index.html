@@ -277,10 +277,12 @@ function hapus(id){
 let chart;
 
 function renderChart(rows){
+  if(!rows.length) return;
+
   let map = {};
   rows.forEach(d=>{
-    let bulan = d.tanggal.substr(0,7);
-    map[bulan] = (map[bulan]||0) + 
+    let bulan = d.tanggal.substring(0,7);
+    map[bulan] = (map[bulan]||0) +
       (d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah);
   });
 
@@ -290,10 +292,18 @@ function renderChart(rows){
   if(chart) chart.destroy();
   chart = new Chart(chartCanvas,{
     type:"bar",
-    data:{labels,datasets:[{label:"Saldo",data}]}
+    data:{
+      labels,
+      datasets:[{
+        label:"Saldo Bulanan",
+        data,
+        backgroundColor:"#4CAF50"
+      }]
+    }
   });
 }
 
+const chartCanvas = document.getElementById("chart");
 
 function showData(rows){
     list.innerHTML="";
