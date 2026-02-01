@@ -1,216 +1,152 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Catatan Keuangan</title>
+  <meta charset="UTF-8">
+  <title>Catatan Keuangan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-body{font-family:Arial;background:#f2f2f2;margin:0;padding:10px}
-.container{max-width:900px;margin:auto}
-h2{text-align:center}
-input,select,button{width:100%;padding:8px;margin:5px 0}
-button{background:#4CAF50;color:#fff;border:0;border-radius:6px}
-button.secondary{background:#777}
-table{width:100%;border-collapse:collapse;background:#fff}
-th,td{padding:6px;border-bottom:1px solid #ddd;font-size:13px;text-align:center}
-th{background:#4CAF50;color:#fff}
-.filter{background:#fff;padding:10px;border-radius:8px;margin-bottom:10px}
-.hidden{display:none}
-.notif{display:none;background:#4CAF50;color:#fff;padding:8px;text-align:center}
-</style>
+  <style>
+    body { font-family: Arial; background:#f5f5f5; margin:0 }
+    .container { max-width:1100px; margin:auto; padding:15px }
+    input, select, button {
+      width:100%; padding:10px; margin:5px 0;
+    }
+    button { background:#4CAF50; color:white; border:none; cursor:pointer }
+    table { width:100%; border-collapse:collapse; background:white }
+    th, td { padding:8px; border:1px solid #ddd; text-align:center }
+    th { background:#4CAF50; color:white }
+    .table-wrap { overflow-x:auto }
+    .flex { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px }
+  </style>
 </head>
 
 <body>
 <div class="container">
+  <h2>📊 Catatan Keuangan</h2>
 
-<h2>Catatan Keuangan</h2>
-<div class="notif" id="notif">✅ Berhasil</div>
+  <!-- FORM -->
+  <div class="flex">
+    <select id="user">
+      <option value="">User</option>
+      <option>Iqbal</option>
+      <option>Balfi</option>
+    </select>
 
-<button class="secondary" onclick="filterBox.classList.toggle('hidden')">🔍 Filter</button>
+    <input type="date" id="tanggal">
 
-<div class="filter hidden" id="filterBox">
-  <select id="fUser" onchange="loadData()">
-    <option value="">Semua User</option>
-    <option>Iqbal</option>
-    <option>Gita</option>
-  </select>
-</div>
+    <select id="kategori">
+      <option value="">Kategori</option>
+      <option>Harian</option>
+      <option>Bulanan</option>
+    </select>
 
-<select id="user"><option>Iqbal</option><option>Gita</option></select>
-<input type="date" id="tanggal">
+    <select id="jenis">
+      <option value="">Jenis</option>
+      <option>Masuk</option>
+      <option>Keluar</option>
+    </select>
 
-<select id="kategori" onchange="updateJenis()">
-<option value="">Kategori</option>
-<option>Uang Masuk</option>
-<option>Uang Keluar</option>
-</select>
+    <input type="number" id="nominal" placeholder="Nominal">
+    <input type="text" id="ket" placeholder="Keterangan">
+  </div>
 
-<select id="jenis"></select>
-<input id="jumlah" placeholder="Nominal">
-<input id="keterangan" placeholder="Keterangan">
+  <button onclick="simpan()">💾 Simpan</button>
 
-<button onclick="simpan()">💾 Simpan</button>
+  <hr>
 
-<table>
-<thead>
-<tr>
-<th>User</th><th>Tgl</th><th>Kat</th><th>Jenis</th><th>Rp</th><th>Ket</th><th>Aksi</th>
-</tr>
-</thead>
-<tbody id="list"></tbody>
-</table>
+  <!-- FILTER -->
+  <div class="flex">
+    <select id="filterUser" onchange="loadData()">
+      <option value="">Semua User</option>
+      <option>Iqbal</option>
+      <option>Balfi</option>
+    </select>
 
-<div id="total"></div>
-<canvas id="chart" height="200"></canvas>
+    <select id="filterKategori" onchange="loadData()">
+      <option value="">Semua Kategori</option>
+      <option>Harian</option>
+      <option>Bulanan</option>
+    </select>
 
+    <select id="limit" onchange="loadData()">
+      <option value="10">10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+    </select>
+  </div>
+
+  <br>
+
+  <!-- TABLE -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>User</th><th>Tanggal</th><th>Kategori</th>
+          <th>Jenis</th><th>Rp</th><th>Ket</th><th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
 </div>
 
 <script>
-const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyh0JwT1QXYqMx7r1tgK9xPo81T24SB3JvHns2pn3xCVxHCTmWs2fVnz1cWhrCNlw8PEA/exec";
+const API = "https://script.google.com/macros/s/AKfycbxkVKfv8laCfROie4os_5ByY_Qnx34SdMBgEqWKShifGlEf8ml_7O2I27ViQHppg6Jtpg/exec";
 
-let editId = null;
-let chart = null;
+/* LOAD DATA */
+async function loadData() {
+  const fUser = filterUser.value;
+  const fKategori = filterKategori.value;
+  const limit = limit.value;
 
-// Safe JSON fetch (tolerant if backend returns text)
-async function safeFetchJSON(url) {
-  try {
-    const res = await fetch(url);
-    const text = await res.text();
-    try {
-      return JSON.parse(text);
-    } catch(e) {
-      console.warn("safeFetchJSON: not valid JSON, returning empty array", text);
-      return [];
-    }
-  } catch(err) {
-    console.error("safeFetchJSON fetch error:", err);
-    return [];
-  }
-}
+  const res = await fetch(`${API}?action=get&user=${fUser}&kategori=${fKategori}&limit=${limit}`);
+  const data = await res.json();
 
-function updateJenis(){
-  jenis.innerHTML = '<option value="">Pilih Jenis</option>';
-  const data = kategori.value==="Uang Masuk"
-    ? ["Gaji","Other"]
-    : ["Jajan","Dapur","Tagihan","Anak","Transport","Hiburan","Nabung","Other"];
-  data.forEach(v => {
-    let o = document.createElement("option");
-    o.value = o.text = v;
-    jenis.appendChild(o);
-  });
-}
+  const tbody = document.getElementById("tbody");
+  tbody.innerHTML = "";
 
-function simpan(){
-  let nominal = jumlah.value.replace(/\D/g,"");
-  if (!user.value || !tanggal.value || !kategori.value || !jenis.value || !nominal) {
-    alert("Lengkapi data!");
-    return;
-  }
-  let fd = new FormData();
-  fd.append("user", user.value);
-  fd.append("tanggal", tanggal.value);
-  fd.append("kategori", kategori.value);
-  fd.append("jenis", jenis.value);
-  fd.append("jumlah", nominal);
-  fd.append("keterangan", keterangan.value);
-
-  let url = URL_SCRIPT;
-  if (editId) {
-    fd.append("id", editId);
-    url += "?action=update";
-  }
-
-  fetch(url, { method: "POST", body: fd })
-    .then(res => res.text())
-    .then(txt => {
-      console.log("Response on save:", txt);
-      notif.style.display = "block";
-      setTimeout(() => notif.style.display = "none", 2000);
-      editId = null;
-      loadData();
-    });
-}
-
-async function loadData(){
-  const url = URL_SCRIPT +
-    "?user=" + encodeURIComponent(fUser.value) +
-    "&kategori=" + encodeURIComponent(fKategori.value) +
-    "&from=" + encodeURIComponent(fFrom.value) +
-    "&to=" + encodeURIComponent(fTo.value) +
-    "&limit=" + encodeURIComponent(limit.value);
-  
-  const rows = await safeFetchJSON(url);
-  showData(Array.isArray(rows) ? rows : []);
-}
-
-function edit(d){
-  editId = d.id;
-  user.value = d.user;
-  tanggal.value = d.tanggal;
-  kategori.value = d.kategori;
-  updateJenis();
-  jenis.value = d.jenis;
-  jumlah.value = Number(d.jumlah).toLocaleString("id-ID");
-  keterangan.value = d.keterangan;
-}
-
-function hapus(id){
-  if (!confirm("Hapus data ini?")) return;
-
-  const fd = new FormData();
-  fd.append("action", "delete");
-  fd.append("id", id);
-
-  fetch(URL_SCRIPT, { method: "POST", body: fd })
-    .then(res => res.text())
-    .then(txt => {
-      console.log("Response on delete:", txt);
-      loadData();
-    });
-}
-
-function showData(rows){
-  console.table(rows);
-  list.innerHTML = "";
-  let saldo = 0;
-  let map = {};
-
-  rows.forEach(d => {
-    saldo += (d.kategori === "Uang Masuk" ? +d.jumlah : -d.jumlah);
-    const month = (d.tanggal || "").substr(0,7);
-    if(month) map[month] = (map[month] || 0) + (d.kategori === "Uang Masuk" ? +d.jumlah : -d.jumlah);
-
-    list.insertAdjacentHTML("beforeend", `
+  data.forEach(r => {
+    tbody.innerHTML += `
       <tr>
-        <td>${d.user || ""}</td>
-        <td>${d.tanggal ? new Date(d.tanggal).toLocaleDateString("id-ID") : ""}</td>
-        <td>${d.kategori || ""}</td>
-        <td>${d.jenis || ""}</td>
-        <td>${Number(d.jumlah || 0).toLocaleString("id-ID")}</td>
-        <td>${d.keterangan || ""}</td>
+        <td>${r.user}</td>
+        <td>${r.tanggal}</td>
+        <td>${r.kategori}</td>
+        <td>${r.jenis}</td>
+        <td>${Number(r.nominal).toLocaleString()}</td>
+        <td>${r.ket}</td>
         <td>
-          <button onclick='edit(${JSON.stringify(d)})'>✏</button>
-          <button onclick="hapus('${d.id}')">🗑</button>
+          <button onclick="hapus('${r.id}')">🗑</button>
         </td>
-      </tr>
-    `);
-  });
-
-  total.innerText = "Saldo: Rp " + saldo.toLocaleString("id-ID");
-
-  if (chart) chart.destroy();
-  chart = new Chart(document.getElementById("chart"), {
-    type: "bar",
-    data: {
-      labels: Object.keys(map),
-      datasets: [{ label: "Saldo Bulanan", data: Object.values(map) }]
-    }
+      </tr>`;
   });
 }
 
-// load first time
+/* SIMPAN */
+async function simpan() {
+  const payload = {
+    user: user.value,
+    tanggal: tanggal.value,
+    kategori: kategori.value,
+    jenis: jenis.value,
+    nominal: nominal.value,
+    ket: ket.value
+  };
+
+  await fetch(API, {
+    method:"POST",
+    body: JSON.stringify(payload)
+  });
+
+  loadData();
+}
+
+async function hapus(id) {
+  await fetch(`${API}?action=delete&id=${id}`);
+  loadData();
+}
+
 loadData();
 </script>
+</body>
+</html>
