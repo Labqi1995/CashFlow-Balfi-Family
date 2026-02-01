@@ -216,18 +216,16 @@
                 alert("Lengkapi data!");
                 return;
             }
-            let fd = new FormData();
-            fd.append("user", user.value);
-            fd.append("tanggal", tanggal.value);
-            fd.append("kategori", kategori.value);
-            fd.append("jenis", jenis.value);
-            fd.append("jumlah", nominal);
-            fd.append("keterangan", keterangan.value);
-            let url = URL_SCRIPT;
-            if (editingId) {
-                url += "?action=update&id=" + editingId;
-            }
-            fetch(url, { method: "POST", body: fd })
+            let data = {
+                user: user.value,
+                tanggal: tanggal.value,
+                kategori: kategori.value,
+                jenis: jenis.value,
+                jumlah: nominal,
+                keterangan: keterangan.value
+            };
+            if (editingId) data.id = editingId;
+            fetch(URL_SCRIPT, { method: "POST", body: JSON.stringify(data), headers: { 'Content-Type': 'application/json' } })
                 .then(r => r.text())
                 .then(() => {
                     notif.style.display = "block";
@@ -263,7 +261,7 @@
 
         /* LOAD DATA */
         function loadData() {
-            let url = URL_SCRIPT + "?action=read" + "&user=" + fUser.value + "&kategori=" + fKategori.value + "&from=" + fFrom.value + "&to=" + fTo.value + "&limit=" + limit.value;
+            let url = URL_SCRIPT + "?action=get" + "&user=" + fUser.value + "&kategori=" + fKategori.value + "&from=" + fFrom.value + "&to=" + fTo.value + "&limit=" + limit.value;
             fetch(url).then(r => r.json()).then(showData);
         }
 
@@ -276,11 +274,14 @@
 
         /* GRAFIK BULANAN OTOMATIS */
         let chart;
+        const chartCanvas = document.getElementById('chart');
         function renderChart(rows) {
             let map = {};
             rows.forEach(d => {
-                let bulan = d.tanggal.substr(0, 7);
-                map[bulan] = (map[bulan] || 0) + (d.kategori === "Uang Masuk" ? +d.jumlah : -d.jumlah);
+                if (d.tanggal) {
+                    let bulan = d.tanggal.substr(0, 7);
+                    map[bulan] = (map[bulan] || 0) + (d.kategori === "Uang Masuk" ? +d.jumlah : -d.jumlah);
+                }
             });
             let labels = Object.keys(map);
             let data = Object.values(map);
