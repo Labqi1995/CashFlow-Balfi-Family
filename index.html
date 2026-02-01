@@ -6,18 +6,21 @@
 <title>Catatan Keuangan</title>
 
 <style>
+* { box-sizing: border-box; }
+
 body {
     font-family: Arial, sans-serif;
     background: #f2f2f2;
-    padding: 15px;
-    display: flex;
-    justify-content: center;
+    padding: 10px;
+    margin: 0;
 }
+
 .container {
-    width: 100%;
-    max-width: 700px;
+    max-width: 900px;
+    margin: auto;
 }
-h2 { text-align: center; }
+
+h2 { text-align: center; margin-bottom: 10px; }
 
 input, select, button {
     width: 100%;
@@ -30,32 +33,45 @@ button {
     background: #4CAF50;
     color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 6px;
     cursor: pointer;
+}
+
+button.secondary {
+    background: #777;
+}
+
+.filter {
+    background: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.filter.hidden {
+    display: none;
+}
+
+.table-wrap {
+    overflow-x: auto;
 }
 
 table {
     width: 100%;
-    margin-top: 10px;
     border-collapse: collapse;
     background: white;
 }
+
 th, td {
     padding: 6px;
     border-bottom: 1px solid #ddd;
     text-align: center;
     font-size: 13px;
 }
+
 th {
     background: #4CAF50;
     color: white;
-}
-
-.filter {
-    background: #fff;
-    padding: 10px;
-    border-radius: 6px;
-    margin-bottom: 10px;
 }
 
 .total {
@@ -64,6 +80,21 @@ th {
     text-align: center;
     font-size: 18px;
 }
+
+.notif {
+    display: none;
+    background: #4CAF50;
+    color: white;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 600px) {
+    th, td { font-size: 12px; }
+}
 </style>
 </head>
 <body>
@@ -71,22 +102,34 @@ th {
 <div class="container">
 <h2>Catatan Keuangan</h2>
 
+<div class="notif" id="notif">✅ Data berhasil disimpan</div>
+
+<button class="secondary" onclick="toggleFilter()">🔍 Tampilkan / Sembunyikan Filter</button>
+
 <!-- FILTER -->
-<div class="filter">
-<select id="fUser">
-    <option value="">Semua User</option>
-    <option>Iqbal</option>
-    <option>Gita</option>
-</select>
+<div class="filter hidden" id="filterBox">
+    <select id="fUser">
+        <option value="">Semua User</option>
+        <option>Iqbal</option>
+        <option>Gita</option>
+    </select>
 
-<select id="fKategori">
-    <option value="">Semua Kategori</option>
-    <option>Uang Masuk</option>
-    <option>Uang Keluar</option>
-</select>
+    <select id="fKategori">
+        <option value="">Semua Kategori</option>
+        <option>Uang Masuk</option>
+        <option>Uang Keluar</option>
+    </select>
 
-<input type="date" id="fTanggal">
-<button onclick="loadData()">Filter</button>
+    <input type="month" id="fBulan">
+
+    <select id="limit">
+        <option value="10">10 Data</option>
+        <option value="25">25 Data</option>
+        <option value="50">50 Data</option>
+        <option value="100">100 Data</option>
+    </select>
+
+    <button onclick="loadData()">Terapkan Filter</button>
 </div>
 
 <!-- INPUT -->
@@ -111,8 +154,9 @@ th {
 <input type="text" id="jumlah" placeholder="Nominal (Rp)" oninput="formatRupiah(this)">
 <input type="text" id="keterangan" placeholder="Keterangan">
 
-<button onclick="simpan()">Simpan</button>
+<button onclick="simpan()">💾 Simpan</button>
 
+<div class="table-wrap">
 <table>
 <thead>
 <tr>
@@ -126,59 +170,65 @@ th {
 </thead>
 <tbody id="list"></tbody>
 </table>
+</div>
 
 <div class="total" id="total">Saldo: Rp 0</div>
 </div>
 
 <script>
-const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbxCAmxysuBBQwyUc88tKtwmLsIdWLMzjRTqm2zx53kCgP0izunEC5JfksKgolgG0K0NPg/exec";
+const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyh0JwT1QXYqMx7r1tgK9xPo81T24SB3JvHns2pn3xCVxHCTmWs2fVnz1cWhrCNlw8PEA/exec";
 
-/* ================== FORMAT RUPIAH ================== */
-function formatRupiah(el) {
-    let angka = el.value.replace(/\D/g, "");
-    el.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+/* FILTER TOGGLE */
+function toggleFilter(){
+    filterBox.classList.toggle("hidden");
 }
 
-/* ================== JENIS ================== */
-function updateJenis() {
-    const kategori = document.getElementById("kategori").value;
-    const jenis = document.getElementById("jenis");
-    jenis.innerHTML = "<option value=''>Pilih Jenis</option>";
+/* FORMAT RUPIAH */
+function formatRupiah(el){
+    let angka = el.value.replace(/\D/g,"");
+    el.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g,".");
+}
 
-    let data = kategori === "Uang Masuk"
-        ? ["Gaji", "Other"]
-        : ["Jajan","Dapur","Tagihan","Anak","Orang Tua","Transport","Hiburan","Nabung","Other"];
+/* JENIS */
+function updateJenis(){
+    const j = jenis;
+    j.innerHTML="<option value=''>Pilih Jenis</option>";
 
-    data.forEach(v => {
-        let o = document.createElement("option");
-        o.text = o.value = v;
-        jenis.add(o);
+    const data = kategori.value==="Uang Masuk"
+        ? ["Gaji","Other"]
+        : ["Jajan","Dapur","Tagihan","Anak","Transport","Hiburan","Nabung","Other"];
+
+    data.forEach(v=>{
+        let o=document.createElement("option");
+        o.text=o.value=v;
+        j.add(o);
     });
 }
 
-/* ================== SIMPAN ================== */
-function simpan() {
+/* SIMPAN */
+function simpan(){
     let nominal = jumlah.value.replace(/\D/g,"");
-
-    if (!user.value || !tanggal.value || !kategori.value || !jenis.value || !nominal) {
+    if(!user.value||!tanggal.value||!kategori.value||!jenis.value||!nominal){
         alert("Lengkapi data!");
         return;
     }
 
-    let fd = new FormData();
-    fd.append("user", user.value);
-    fd.append("tanggal", tanggal.value);
-    fd.append("kategori", kategori.value);
-    fd.append("jenis", jenis.value);
-    fd.append("jumlah", nominal);
-    fd.append("keterangan", keterangan.value);
+    let fd=new FormData();
+    fd.append("user",user.value);
+    fd.append("tanggal",tanggal.value);
+    fd.append("kategori",kategori.value);
+    fd.append("jenis",jenis.value);
+    fd.append("jumlah",nominal);
+    fd.append("keterangan",keterangan.value);
 
-    fetch(URL_SCRIPT, { method:"POST", body: fd })
-        .then(r => r.text())
-        .then(() => {
-            resetForm();
-            loadData();
-        });
+    fetch(URL_SCRIPT,{method:"POST",body:fd})
+    .then(r=>r.text())
+    .then(()=>{
+        notif.style.display="block";
+        setTimeout(()=>notif.style.display="none",2000);
+        resetForm();
+        loadData();
+    });
 }
 
 function resetForm(){
@@ -190,26 +240,26 @@ function resetForm(){
     keterangan.value="";
 }
 
-/* ================== LOAD DATA ================== */
-function loadData() {
+/* LOAD DATA */
+function loadData(){
     let url = URL_SCRIPT + "?action=read"
         + "&user=" + fUser.value
         + "&kategori=" + fKategori.value
-        + "&tanggal=" + fTanggal.value;
+        + "&bulan=" + fBulan.value
+        + "&limit=" + limit.value;
 
     fetch(url)
-        .then(r => r.json())
-        .then(showData);
+    .then(r=>r.json())
+    .then(showData);
 }
 
 function showData(rows){
-    let list = document.getElementById("list");
     list.innerHTML="";
-    let saldo = 0;
+    let saldo=0;
 
     rows.forEach(d=>{
-        let tr = document.createElement("tr");
-        tr.innerHTML = `
+        let tr=document.createElement("tr");
+        tr.innerHTML=`
             <td>${d.user}</td>
             <td>${d.tanggal}</td>
             <td>${d.kategori}</td>
@@ -218,11 +268,10 @@ function showData(rows){
             <td>${d.keterangan}</td>
         `;
         list.appendChild(tr);
-
-        saldo += d.kategori==="Uang Masuk" ? +d.jumlah : -d.jumlah;
+        saldo += d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah;
     });
 
-    total.innerText = "Saldo: Rp " + saldo.toLocaleString("id-ID");
+    total.innerText="Saldo: Rp "+saldo.toLocaleString("id-ID");
 }
 
 loadData();
