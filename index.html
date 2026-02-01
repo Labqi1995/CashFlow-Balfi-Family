@@ -2,237 +2,121 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Catatan Keuangan</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-*{box-sizing:border-box}
 body{font-family:Arial;background:#f2f2f2;margin:0;padding:10px}
 .container{max-width:900px;margin:auto}
 h2{text-align:center}
-
-input,select,button{
-  width:100%;
-  padding:10px;
-  margin:6px 0;
-  font-size:14px
-}
-button{
-  background:#4CAF50;
-  color:#fff;
-  border:none;
-  border-radius:6px;
-  cursor:pointer
-}
+input,select,button{width:100%;padding:8px;margin:5px 0}
+button{background:#4CAF50;color:#fff;border:0;border-radius:6px}
 button.secondary{background:#777}
-
-.filter{
-  background:#fff;
-  padding:10px;
-  border-radius:8px;
-  margin-bottom:10px
-}
-.filter.hidden{display:none}
-
-.table-wrap{overflow-x:auto}
-table{
-  width:100%;
-  border-collapse:collapse;
-  background:#fff
-}
-th,td{
-  padding:6px;
-  border-bottom:1px solid #ddd;
-  text-align:center;
-  font-size:13px
-}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{padding:6px;border-bottom:1px solid #ddd;font-size:13px;text-align:center}
 th{background:#4CAF50;color:#fff}
-
-.total{
-  margin:10px 0;
-  font-weight:bold;
-  text-align:center;
-  font-size:18px
-}
-.notif{
-  display:none;
-  background:#4CAF50;
-  color:#fff;
-  padding:10px;
-  border-radius:6px;
-  text-align:center;
-  margin-bottom:10px
-}
-
-@media(max-width:600px){
-  th,td{font-size:12px}
-}
+.filter{background:#fff;padding:10px;border-radius:8px;margin-bottom:10px}
+.hidden{display:none}
+.notif{display:none;background:#4CAF50;color:#fff;padding:8px;text-align:center}
 </style>
 </head>
 
 <body>
-
 <div class="container">
+
 <h2>Catatan Keuangan</h2>
+<div class="notif" id="notif">✅ Berhasil</div>
 
-<div class="notif" id="notif">✅ Data berhasil disimpan</div>
+<button class="secondary" onclick="filterBox.classList.toggle('hidden')">🔍 Filter</button>
 
-<button class="secondary" onclick="toggleFilter()">🔍 Filter</button>
-
-<!-- FILTER -->
 <div class="filter hidden" id="filterBox">
-  <select id="fUser">
+  <select id="fUser" onchange="loadData()">
     <option value="">Semua User</option>
     <option>Iqbal</option>
     <option>Gita</option>
   </select>
-
-  <select id="fKategori">
-    <option value="">Semua Kategori</option>
-    <option>Uang Masuk</option>
-    <option>Uang Keluar</option>
-  </select>
-
-  <input type="date" id="fFrom">
-  <input type="date" id="fTo">
-  <button onclick="loadData()">Terapkan</button>
 </div>
 
-<!-- INPUT -->
-<select id="user">
-  <option value="">Pilih User</option>
-  <option>Iqbal</option>
-  <option>Gita</option>
-</select>
-
+<select id="user"><option>Iqbal</option><option>Gita</option></select>
 <input type="date" id="tanggal">
 
 <select id="kategori" onchange="updateJenis()">
-  <option value="">Pilih Kategori</option>
-  <option>Uang Masuk</option>
-  <option>Uang Keluar</option>
+<option value="">Kategori</option>
+<option>Uang Masuk</option>
+<option>Uang Keluar</option>
 </select>
 
-<select id="jenis">
-  <option value="">Pilih Jenis</option>
-</select>
-
-<input type="text" id="jumlah" placeholder="Nominal (Rp)" oninput="formatRupiah(this)">
-<input type="text" id="keterangan" placeholder="Keterangan">
+<select id="jenis"></select>
+<input id="jumlah" placeholder="Nominal">
+<input id="keterangan" placeholder="Keterangan">
 
 <button onclick="simpan()">💾 Simpan</button>
 
-<div style="display:flex;justify-content:flex-end">
-  <select id="limit" style="width:140px" onchange="loadData()">
-    <option value="10">10 Data</option>
-    <option value="25">25 Data</option>
-    <option value="50">50 Data</option>
-    <option value="100">100 Data</option>
-  </select>
-</div>
-
-<div class="table-wrap">
 <table>
 <thead>
 <tr>
-  <th>User</th>
-  <th>Tgl</th>
-  <th>Kategori</th>
-  <th>Jenis</th>
-  <th>Nominal</th>
-  <th>Ket</th>
-  <th>Aksi</th>
+<th>User</th><th>Tgl</th><th>Kat</th><th>Jenis</th><th>Rp</th><th>Ket</th><th>Aksi</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
 </table>
-</div>
 
-<div class="total" id="total">Saldo: Rp 0</div>
-
+<div id="total"></div>
 <canvas id="chart" height="200"></canvas>
+
 </div>
 
 <script>
-const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyh0JwT1QXYqMx7r1tgK9xPo81T24SB3JvHns2pn3xCVxHCTmWs2fVnz1cWhrCNlw8PEA/exec";
+const URL_SCRIPT="https://script.google.com/macros/s/AKfycbyh0JwT1QXYqMx7r1tgK9xPo81T24SB3JvHns2pn3xCVxHCTmWs2fVnz1cWhrCNlw8PEA/exec";
 
-let chart;
-
-/* TOGGLE FILTER */
-function toggleFilter(){
-  filterBox.classList.toggle("hidden");
-}
-
-/* FORMAT */
-function formatRupiah(el){
-  let n = el.value.replace(/\D/g,"");
-  el.value = n.replace(/\B(?=(\d{3})+(?!\d))/g,".");
-}
-function formatTanggal(t){
-  return new Date(t).toLocaleDateString("id-ID");
-}
+let editId=null, chart;
 
 /* JENIS */
 function updateJenis(){
-  jenis.innerHTML='<option value="">Pilih Jenis</option>';
-  const data = kategori.value==="Uang Masuk"
-    ? ["Gaji","Other"]
-    : ["Jajan","Dapur","Tagihan","Anak","Transport","Hiburan","Nabung","Other"];
-  data.forEach(v=>{
+  jenis.innerHTML="";
+  (kategori.value==="Uang Masuk"
+    ?["Gaji","Other"]
+    :["Jajan","Tagihan","Transport","Other"]
+  ).forEach(v=>{
     let o=document.createElement("option");
     o.value=o.text=v;
     jenis.appendChild(o);
   });
 }
 
-/* SIMPAN */
+/* SIMPAN / UPDATE */
 function simpan(){
-  let nominal = jumlah.value.replace(/\D/g,"");
-  if(!user.value||!tanggal.value||!kategori.value||!jenis.value||!nominal){
-    alert("Lengkapi data!");
-    return;
-  }
-
-  let fd = new FormData();
+  let fd=new FormData();
   fd.append("user",user.value);
   fd.append("tanggal",tanggal.value);
   fd.append("kategori",kategori.value);
   fd.append("jenis",jenis.value);
-  fd.append("jumlah",nominal);
+  fd.append("jumlah",jumlah.value);
   fd.append("keterangan",keterangan.value);
 
-  fetch(URL_SCRIPT,{method:"POST",body:fd})
-    .then(()=> {
+  let url = URL_SCRIPT;
+  if(editId){
+    fd.append("id",editId);
+    url += "?action=update";
+  }
+
+  fetch(url,{method:"POST",body:fd})
+    .then(r=>r.json())
+    .then(()=>{
+      editId=null;
       notif.style.display="block";
-      setTimeout(()=>notif.style.display="none",2000);
-      resetForm();
+      setTimeout(()=>notif.style.display="none",1500);
       loadData();
     });
 }
 
-function resetForm(){
-  user.value="";
-  tanggal.value="";
-  kategori.value="";
-  jenis.innerHTML='<option value="">Pilih Jenis</option>';
-  jumlah.value="";
-  keterangan.value="";
-}
-
 /* LOAD DATA */
 function loadData(){
-  let url = URL_SCRIPT +
-    "?user="+fUser.value+
-    "&kategori="+fKategori.value+
-    "&from="+fFrom.value+
-    "&to="+fTo.value+
-    "&limit="+limit.value;
-
-  fetch(url)
-    .then(r=>r.json())
-    .then(showData);
+ fetch(URL_SCRIPT+"?user="+fUser.value)
+ .then(r=>r.json())
+ .then(showData);
 }
 
 /* EDIT */
@@ -249,62 +133,48 @@ function edit(d){
 
 /* DELETE */
 function hapus(id){
-  if(!confirm("Hapus data ini?")) return;
-  let fd=new FormData();
-  fd.append("action","delete");
-  fd.append("id",id);
-  fetch(URL_SCRIPT,{method:"POST",body:fd})
-    .then(()=>loadData());
+ if(confirm("Hapus data?")){
+   fetch(URL_SCRIPT+"?action=delete&id="+id)
+   .then(r=>r.json())
+   .then(loadData);
+ }
 }
 
-/* CHART */
-function renderChart(rows){
-  let map={};
-  rows.forEach(d=>{
-    let b=d.tanggal.substr(0,7);
-    map[b]=(map[b]||0)+(d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah);
-  });
-
-  if(chart) chart.destroy();
-  chart=new Chart(chartCanvas,{
-    type:"bar",
-    data:{
-      labels:Object.keys(map),
-      datasets:[{
-        label:"Saldo Bulanan",
-        data:Object.values(map)
-      }]
-    }
-  });
-}
-
-/* SHOW DATA */
+/* TAMPIL + CHART */
 function showData(rows){
-  list.innerHTML="";
-  let saldo=0;
+ list.innerHTML="";
+ let saldo=0,map={};
 
-  rows.forEach(d=>{
-    saldo+=d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah;
+ rows.forEach(d=>{
+  saldo+=d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah;
+  let m=d.tanggal?.substr(0,7);
+  if(m) map[m]=(map[m]||0)+(d.kategori==="Uang Masuk"?+d.jumlah:-d.jumlah);
 
-    list.insertAdjacentHTML("beforeend",`
-      <tr>
-        <td>${d.user}</td>
-        <td>${formatTanggal(d.tanggal)}</td>
-        <td>${d.kategori}</td>
-        <td>${d.jenis}</td>
-        <td>${Number(d.jumlah).toLocaleString("id-ID")}</td>
-        <td>${d.keterangan||""}</td>
-        <td><button onclick="hapus('${d.id}')">🗑</button></td>
-      </tr>
-    `);
-  });
+  list.innerHTML+=`
+   <tr>
+    <td>${d.user}</td>
+    <td>${new Date(d.tanggal).toLocaleDateString("id-ID")}</td>
+    <td>${d.kategori}</td>
+    <td>${d.jenis}</td>
+    <td>${Number(d.jumlah).toLocaleString("id-ID")}</td>
+    <td>${d.keterangan||""}</td>
+    <td>
+      <button onclick='edit(${JSON.stringify(d)})'>✏</button>
+      <button onclick="hapus('${d.id}')">🗑</button>
+    </td>
+   </tr>`;
+ });
 
-  total.innerText="Saldo: Rp "+saldo.toLocaleString("id-ID");
-  renderChart(rows);
+ total.innerText="Saldo: Rp "+saldo.toLocaleString("id-ID");
+
+ if(chart)chart.destroy();
+ chart=new Chart(document.getElementById("chart"),{
+  type:"bar",
+  data:{labels:Object.keys(map),datasets:[{label:"Saldo Bulanan",data:Object.values(map)}]}
+ });
 }
 
 loadData();
 </script>
-
 </body>
 </html>
