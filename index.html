@@ -1,176 +1,319 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Catatan Keuangan</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catatan Keuangan</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
 
-<style>
-body{font-family:Arial;background:#f4f6f8;margin:0}
-.container{max-width:1100px;margin:auto;padding:15px}
-h2{margin-bottom:10px}
-input,select,button{padding:10px;width:100%;margin:4px 0}
-button{background:#4CAF50;color:#fff;border:none;border-radius:6px;cursor:pointer}
-button.edit{background:#2196F3}
-button.del{background:#f44336}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px}
-table{width:100%;border-collapse:collapse;background:#fff}
-th,td{padding:8px;border:1px solid #ddd;text-align:center}
-th{background:#4CAF50;color:white}
-.table-wrap{overflow-x:auto;margin-top:10px}
-</style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            padding: 10px;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin: 6px 0;
+            font-size: 14px;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button.secondary {
+            background: #777;
+        }
+
+        .filter {
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .filter.hidden {
+            display: none;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            padding: 6px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        th {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .total {
+            margin-top: 10px;
+            font-weight: bold;
+            text-align: center;
+            font-size: 18px;
+        }
+
+        .notif {
+            display: none;
+            background: #4CAF50;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 600px) {
+            th, td {
+                font-size: 12px;
+            }
+        }
+    </style>
 </head>
-
 <body>
-<div class="container">
-<h2>📊 Catatan Keuangan</h2>
+    <div class="container">
+        <h2>Catatan Keuangan</h2>
+        <div class="notif" id="notif">✅ Data berhasil disimpan</div>
+        <button class="secondary" onclick="toggleFilter()">🔍 Tampilkan / Sembunyikan Filter</button>
 
-<!-- FORM -->
-<input type="hidden" id="editId">
+        <!-- FILTER -->
+        <div class="filter hidden" id="filterBox">
+            <select id="fUser">
+                <option value="">Semua User</option>
+                <option>Iqbal</option>
+                <option>Gita</option>
+            </select>
+            <select id="fKategori">
+                <option value="">Semua Kategori</option>
+                <option>Uang Masuk</option>
+                <option>Uang Keluar</option>
+            </select>
+            <input type="date" id="fFrom">
+            <input type="date" id="fTo">
+            <button onclick="loadData()">Terapkan Filter</button>
+        </div>
 
-<div class="grid">
-  <select id="user">
-    <option value="">User</option>
-    <option>Iqbal</option>
-    <option>Balfi</option>
-  </select>
+        <!-- INPUT -->
+        <select id="user">
+            <option value="">Pilih User</option>
+            <option>Iqbal</option>
+            <option>Gita</option>
+        </select>
+        <input type="date" id="tanggal">
+        <select id="kategori" onchange="updateJenis()">
+            <option value="">Pilih Kategori</option>
+            <option>Uang Masuk</option>
+            <option>Uang Keluar</option>
+        </select>
+        <select id="jenis">
+            <option value="">Pilih Jenis</option>
+        </select>
+        <input type="text" id="jumlah" placeholder="Nominal (Rp)" oninput="formatRupiah(this)">
+        <input type="text" id="keterangan" placeholder="Keterangan">
+        <button onclick="simpan()">💾 Simpan</button>
 
-  <input type="date" id="tanggal">
+        <div style="display:flex;justify-content:flex-end">
+            <select id="limit" style="width:120px" onchange="loadData()">
+                <option value="10">10 Data</option>
+                <option value="25">25 Data</option>
+                <option value="50">50 Data</option>
+                <option value="100">100 Data</option>
+            </select>
+        </div>
 
-  <select id="kategori">
-    <option value="">Kategori</option>
-    <option>Harian</option>
-    <option>Bulanan</option>
-  </select>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Tgl</th>
+                        <th>Kategori</th>
+                        <th>Jenis</th>
+                        <th>Nominal</th>
+                        <th>Keterangan</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="list"></tbody>
+            </table>
+        </div>
 
-  <select id="jenis">
-    <option value="">Jenis</option>
-    <option>Masuk</option>
-    <option>Keluar</option>
-  </select>
+        <div class="total" id="total">Saldo: Rp 0</div>
+    </div>
 
-  <input type="number" id="jumlah" placeholder="Jumlah">
-  <input type="text" id="keterangan" placeholder="Keterangan">
-</div>
+    <canvas id="chart" height="200"></canvas>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyh0JwT1QXYqMx7r1tgK9xPo81T24SB3JvHns2pn3xCVxHCTmWs2fVnz1cWhrCNlw8PEA/exec";
+        let editingId = null;
 
-<button onclick="simpan()" id="btnSimpan">💾 Simpan</button>
+        /* FILTER TOGGLE */
+        function toggleFilter() {
+            filterBox.classList.toggle("hidden");
+        }
 
-<hr>
+        /* FORMAT RUPIAH */
+        function formatRupiah(el) {
+            let angka = el.value.replace(/\D/g, "");
+            el.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+        }
 
-<!-- FILTER -->
-<div class="grid">
-  <select id="fUser" onchange="loadData()">
-    <option value="">Semua User</option>
-    <option>Iqbal</option>
-    <option>Balfi</option>
-  </select>
+        /* FORMAT TANGGAL */
+        function formatTanggal(tgl) {
+            const d = new Date(tgl);
+            return d.toLocaleDateString("id-ID");
+        }
 
-  <select id="fKategori" onchange="loadData()">
-    <option value="">Semua Kategori</option>
-    <option>Harian</option>
-    <option>Bulanan</option>
-  </select>
+        /* JENIS */
+        function updateJenis() {
+            const j = jenis;
+            j.innerHTML = "<option value=''>Pilih Jenis</option>";
+            const data = kategori.value === "Uang Masuk" ? ["Gaji", "Other"] : ["Jajan", "Dapur", "Tagihan", "Anak", "Transport", "Hiburan", "Nabung", "Other"];
+            data.forEach(v => {
+                let o = document.createElement("option");
+                o.text = o.value = v;
+                j.add(o);
+            });
+        }
 
-  <select id="limitData" onchange="loadData()">
-    <option value="10">10</option>
-    <option value="25">25</option>
-    <option value="50">50</option>
-  </select>
-</div>
+        /* SIMPAN / UPDATE */
+        function simpan() {
+            let nominal = jumlah.value.replace(/\D/g, "");
+            if (!user.value || !tanggal.value || !kategori.value || !jenis.value || !nominal) {
+                alert("Lengkapi data!");
+                return;
+            }
+            let fd = new FormData();
+            fd.append("user", user.value);
+            fd.append("tanggal", tanggal.value);
+            fd.append("kategori", kategori.value);
+            fd.append("jenis", jenis.value);
+            fd.append("jumlah", nominal);
+            fd.append("keterangan", keterangan.value);
+            let url = URL_SCRIPT;
+            if (editingId) {
+                url += "?action=update&id=" + editingId;
+            }
+            fetch(url, { method: "POST", body: fd })
+                .then(r => r.text())
+                .then(() => {
+                    notif.style.display = "block";
+                    setTimeout(() => notif.style.display = "none", 2000);
+                    resetForm();
+                    loadData();
+                });
+        }
 
-<!-- TABLE -->
-<div class="table-wrap">
-<table>
-<thead>
-<tr>
-  <th>User</th>
-  <th>Tanggal</th>
-  <th>Kategori</th>
-  <th>Jenis</th>
-  <th>Jumlah</th>
-  <th>Keterangan</th>
-  <th>Aksi</th>
-</tr>
-</thead>
-<tbody id="tbody"></tbody>
-</table>
-</div>
-</div>
+        function resetForm() {
+            user.value = "";
+            tanggal.value = "";
+            kategori.value = "";
+            jenis.innerHTML = "<option value=''>Pilih Jenis</option>";
+            jumlah.value = "";
+            keterangan.value = "";
+            editingId = null;
+            document.querySelector('button[onclick="simpan()"]').innerText = '💾 Simpan';
+        }
 
-<script>
-const API = "https://script.google.com/macros/s/AKfycbxkVKfv8laCfROie4os_5ByY_Qnx34SdMBgEqWKShifGlEf8ml_7O2I27ViQHppg6Jtpg/exec";
+        /* EDIT DATA */
+        function editData(id, userVal, tanggalVal, kategoriVal, jenisVal, jumlahVal, keteranganVal) {
+            editingId = id;
+            user.value = userVal;
+            tanggal.value = tanggalVal;
+            kategori.value = kategoriVal;
+            updateJenis();
+            jenis.value = jenisVal;
+            jumlah.value = jumlahVal.replace(/\D/g, "").replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+            keterangan.value = keteranganVal;
+            document.querySelector('button[onclick="simpan()"]').innerText = '🔄 Update';
+        }
 
-/* LOAD */
-async function loadData(){
-  const res = await fetch(`${API}?action=get&user=${fUser.value}&kategori=${fKategori.value}&limit=${limitData.value}`);
-  const data = await res.json();
+        /* LOAD DATA */
+        function loadData() {
+            let url = URL_SCRIPT + "?action=read" + "&user=" + fUser.value + "&kategori=" + fKategori.value + "&from=" + fFrom.value + "&to=" + fTo.value + "&limit=" + limit.value;
+            fetch(url).then(r => r.json()).then(showData);
+        }
 
-  tbody.innerHTML="";
-  data.forEach(d=>{
-    tbody.innerHTML+=`
-    <tr>
-      <td>${d.user}</td>
-      <td>${d.tanggal}</td>
-      <td>${d.kategori}</td>
-      <td>${d.jenis}</td>
-      <td>${Number(d.jumlah).toLocaleString("id-ID")}</td>
-      <td>${d.keterangan}</td>
-      <td>
-        <button class="edit" onclick='edit(${JSON.stringify(d)})'>✏️</button>
-        <button class="del" onclick="hapus('${d.id}')">🗑</button>
-      </td>
-    </tr>`;
-  });
-}
+        /* HAPUS DATA */
+        function hapus(id) {
+            if (!confirm("Hapus data ini?")) return;
+            fetch(URL_SCRIPT + "?action=delete&id=" + id)
+                .then(() => loadData());
+        }
 
-/* SIMPAN / UPDATE */
-async function simpan(){
-  const payload={
-    id:editId.value,
-    user:user.value,
-    tanggal:tanggal.value,
-    kategori:kategori.value,
-    jenis:jenis.value,
-    jumlah:jumlah.value,
-    keterangan:keterangan.value
-  };
+        /* GRAFIK BULANAN OTOMATIS */
+        let chart;
+        function renderChart(rows) {
+            let map = {};
+            rows.forEach(d => {
+                let bulan = d.tanggal.substr(0, 7);
+                map[bulan] = (map[bulan] || 0) + (d.kategori === "Uang Masuk" ? +d.jumlah : -d.jumlah);
+            });
+            let labels = Object.keys(map);
+            let data = Object.values(map);
+            if (chart) chart.destroy();
+            chart = new Chart(chartCanvas, {
+                type: "bar",
+                data: { labels, datasets: [{ label: "Saldo", data }] }
+            });
+        }
 
-  await fetch(API,{
-    method:"POST",
-    body:JSON.stringify(payload)
-  });
+        function showData(rows) {
+            list.innerHTML = "";
+            let saldo = 0;
+            renderChart(rows);
+            rows.forEach(d => {
+                let tr = document.createElement("tr");
+                tr.innerHTML = `<td>${d.user}</td>
+                                <td>${formatTanggal(d.tanggal)}</td>
+                                <td>${d.kategori}</td>
+                                <td>${d.jenis}</td>
+                                <td>${Number(d.jumlah).toLocaleString("id-ID")}</td>
+                                <td>${d.keterangan}</td>
+                                <td>
+                                    <button onclick="editData('${d.id}', '${d.user}', '${d.tanggal}', '${d.kategori}', '${d.jenis}', '${d.jumlah}', '${d.keterangan}')">✏</button>
+                                    <button onclick="hapus('${d.id}')">🗑</button>
+                                </td>`;
+                list.appendChild(tr);
+                saldo += d.kategori === "Uang Masuk" ? +d.jumlah : -d.jumlah;
+            });
+            total.innerText = "Saldo: Rp " + saldo.toLocaleString("id-ID");
+        }
 
-  resetForm();
-  loadData();
-}
-
-/* EDIT */
-function edit(d){
-  editId.value=d.id;
-  user.value=d.user;
-  tanggal.value=d.tanggal;
-  kategori.value=d.kategori;
-  jenis.value=d.jenis;
-  jumlah.value=d.jumlah;
-  keterangan.value=d.keterangan;
-  btnSimpan.innerText="💾 Update";
-}
-
-/* RESET */
-function resetForm(){
-  editId.value="";
-  btnSimpan.innerText="💾 Simpan";
-  user.value=tanggal.value=kategori.value=jenis.value=jumlah.value=keterangan.value="";
-}
-
-/* DELETE */
-async function hapus(id){
-  if(!confirm("Hapus data ini?")) return;
-  await fetch(`${API}?action=delete&id=${id}`);
-  loadData();
-}
-
-loadData();
-</script>
+        loadData();
+    </script>
 </body>
 </html>
