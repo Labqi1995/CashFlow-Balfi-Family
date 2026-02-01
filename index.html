@@ -15,16 +15,15 @@ body {
 }
 .container {
     width: 100%;
-    max-width: 650px;
+    max-width: 700px;
 }
 h2 { text-align: center; }
 
 input, select, button {
     width: 100%;
-    padding: 12px;
+    padding: 10px;
     margin: 6px 0;
-    font-size: 16px;
-    box-sizing: border-box;
+    font-size: 14px;
 }
 
 button {
@@ -42,22 +41,23 @@ table {
     background: white;
 }
 th, td {
-    padding: 8px;
+    padding: 6px;
     border-bottom: 1px solid #ddd;
     text-align: center;
-    font-size: 14px;
+    font-size: 13px;
 }
 th {
     background: #4CAF50;
     color: white;
 }
-.aksi button {
-    width: auto;
-    padding: 5px 8px;
-    margin: 0 2px;
-    font-size: 12px;
+
+.filter {
+    background: #fff;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 10px;
 }
-.hapus { background: #e74c3c; }
+
 .total {
     margin-top: 10px;
     font-weight: bold;
@@ -71,6 +71,25 @@ th {
 <div class="container">
 <h2>Catatan Keuangan</h2>
 
+<!-- FILTER -->
+<div class="filter">
+<select id="fUser">
+    <option value="">Semua User</option>
+    <option>Iqbal</option>
+    <option>Gita</option>
+</select>
+
+<select id="fKategori">
+    <option value="">Semua Kategori</option>
+    <option>Uang Masuk</option>
+    <option>Uang Keluar</option>
+</select>
+
+<input type="date" id="fTanggal">
+<button onclick="loadData()">Filter</button>
+</div>
+
+<!-- INPUT -->
 <select id="user">
     <option value="">Pilih User</option>
     <option>Iqbal</option>
@@ -86,13 +105,13 @@ th {
 </select>
 
 <select id="jenis">
-    <option value="">Pilih Jenis Transaksi</option>
+    <option value="">Pilih Jenis</option>
 </select>
 
-<input type="number" id="jumlah" placeholder="Jumlah (Rp)">
+<input type="text" id="jumlah" placeholder="Nominal (Rp)" oninput="formatRupiah(this)">
 <input type="text" id="keterangan" placeholder="Keterangan">
 
-<button onclick="tambah()" id="btnSimpan">Tambah</button>
+<button onclick="simpan()">Simpan</button>
 
 <table>
 <thead>
@@ -103,7 +122,6 @@ th {
     <th>Jenis</th>
     <th>Nominal</th>
     <th>Keterangan</th>
-    <th>Aksi</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
@@ -113,145 +131,101 @@ th {
 </div>
 
 <script>
-const URL_SCRIPT = "https://script.google.com/macros/s/AKfycbyBfCF6tLybiWd-WQSfVl1iTpKEc2Qnqq5iMDqamkLuODLHlmq44yJeZvLF-frqfJ0YvA/exec"; // ganti dengan URL /exec terbaru
+const URL_SCRIPT = "PASTE_URL_WEB_APP_KAMU_DISINI";
 
-let data = JSON.parse(localStorage.getItem("data")) || [];
-let editIndex = -1;
-
-function kirimKeSpreadsheet(obj) {
-  const formData = new FormData();
-  formData.append("user", obj.user);
-  formData.append("tgl", obj.tgl);
-  formData.append("kategori", obj.kat);
-  formData.append("jenis", obj.jenis);
-  formData.append("jumlah", obj.jml);
-  formData.append("keterangan", obj.ket);
-
-  fetch(URL_SCRIPT, {
-    method: "POST",
-    body: formData
-  })
-  .then(res => res.text())
-  .then(res => console.log("Terkirim ke spreadsheet:", res))
-  .catch(err => console.error("Gagal kirim:", err));
+/* ================== FORMAT RUPIAH ================== */
+function formatRupiah(el) {
+    let angka = el.value.replace(/\D/g, "");
+    el.value = angka.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
-function updateJenis(selectedValue = "") {
+/* ================== JENIS ================== */
+function updateJenis() {
     const kategori = document.getElementById("kategori").value;
-    const jenisSelect = document.getElementById("jenis");
-    jenisSelect.innerHTML = '<option value="">Pilih Jenis Transaksi</option>';
+    const jenis = document.getElementById("jenis");
+    jenis.innerHTML = "<option value=''>Pilih Jenis</option>";
 
-    let opsi = [];
-    if (kategori === "Uang Masuk") {
-        opsi = ["Gaji", "Other"];
-    } else if (kategori === "Uang Keluar") {
-        opsi = ["Jajan","Dapur","Tagihan","Anak","Orang Tua",
-                "Transport","Kebutuhan & Hiburan","Nabung","Other"];
-    }
+    let data = kategori === "Uang Masuk"
+        ? ["Gaji", "Other"]
+        : ["Jajan","Dapur","Tagihan","Anak","Orang Tua","Transport","Hiburan","Nabung","Other"];
 
-    opsi.forEach(teks => {
-        let opt = document.createElement("option");
-        opt.value = teks;
-        opt.textContent = teks;
-        if (teks === selectedValue) opt.selected = true;
-        jenisSelect.appendChild(opt);
+    data.forEach(v => {
+        let o = document.createElement("option");
+        o.text = o.value = v;
+        jenis.add(o);
     });
 }
 
-function render() {
-    let list = document.getElementById("list");
-    list.innerHTML = "";
-    let saldo = 0;
+/* ================== SIMPAN ================== */
+function simpan() {
+    let nominal = jumlah.value.replace(/\D/g,"");
 
-    data.forEach((d, i) => {
-        let row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${d.user}</td>
-            <td>${d.tgl}</td>
-            <td>${d.kat}</td>
-            <td>${d.jenis}</td>
-            <td>${d.jml.toLocaleString("id-ID")}</td>
-            <td>${d.ket}</td>
-            <td class="aksi">
-                <button onclick="editData(${i})">Edit</button>
-                <button class="hapus" onclick="hapusData(${i})">Hapus</button>
-            </td>
-        `;
-        list.appendChild(row);
-
-        if (d.kat === "Uang Masuk") saldo += d.jml;
-        else saldo -= d.jml;
-    });
-
-    document.getElementById("total").innerText =
-        "Saldo: Rp " + saldo.toLocaleString("id-ID");
-}
-
-function tambah() {
-    let usr = user.value;
-    let tgl = tanggal.value;
-    let kat = kategori.value;
-    let jns = jenis.value;
-    let jml = parseInt(jumlah.value);
-    let ket = keterangan.value;
-
-    if (!usr || !tgl || !kat || !jns || !jml || !ket) {
+    if (!user.value || !tanggal.value || !kategori.value || !jenis.value || !nominal) {
         alert("Lengkapi data!");
         return;
     }
 
-    let obj = { user: usr, tgl, kat, jenis: jns, jml, ket };
+    let fd = new FormData();
+    fd.append("user", user.value);
+    fd.append("tanggal", tanggal.value);
+    fd.append("kategori", kategori.value);
+    fd.append("jenis", jenis.value);
+    fd.append("jumlah", nominal);
+    fd.append("keterangan", keterangan.value);
 
-    kirimKeSpreadsheet(obj); // kirim ke Google Sheet
-
-    if (editIndex === -1) {
-        data.push(obj);
-    } else {
-        data[editIndex] = obj;
-        editIndex = -1;
-        btnSimpan.innerText = "Tambah";
-    }
-
-    localStorage.setItem("data", JSON.stringify(data));
-    render();
-    resetForm();
+    fetch(URL_SCRIPT, { method:"POST", body: fd })
+        .then(r => r.text())
+        .then(() => {
+            resetForm();
+            loadData();
+        });
 }
 
-function editData(i) {
-    let d = data[i];
-    editIndex = i;
-
-    user.value = d.user;
-    tanggal.value = d.tgl;
-    kategori.value = d.kat;
-    updateJenis(d.jenis);
-    jumlah.value = d.jml;
-    keterangan.value = d.ket;
-
-    btnSimpan.innerText = "Simpan Perubahan";
+function resetForm(){
+    user.value="";
+    tanggal.value="";
+    kategori.value="";
+    jenis.innerHTML="<option value=''>Pilih Jenis</option>";
+    jumlah.value="";
+    keterangan.value="";
 }
 
-function hapusData(i) {
-    if (confirm("Hapus transaksi ini?")) {
-        data.splice(i, 1);
-        localStorage.setItem("data", JSON.stringify(data));
-        render();
-        resetForm();
-    }
+/* ================== LOAD DATA ================== */
+function loadData() {
+    let url = URL_SCRIPT + "?action=read"
+        + "&user=" + fUser.value
+        + "&kategori=" + fKategori.value
+        + "&tanggal=" + fTanggal.value;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(showData);
 }
 
-function resetForm() {
-    user.value = "";
-    tanggal.value = "";
-    kategori.value = "";
-    jenis.innerHTML = '<option value="">Pilih Jenis Transaksi</option>';
-    jumlah.value = "";
-    keterangan.value = "";
-    editIndex = -1;
-    btnSimpan.innerText = "Tambah";
+function showData(rows){
+    let list = document.getElementById("list");
+    list.innerHTML="";
+    let saldo = 0;
+
+    rows.forEach(d=>{
+        let tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${d.user}</td>
+            <td>${d.tanggal}</td>
+            <td>${d.kategori}</td>
+            <td>${d.jenis}</td>
+            <td>${Number(d.jumlah).toLocaleString("id-ID")}</td>
+            <td>${d.keterangan}</td>
+        `;
+        list.appendChild(tr);
+
+        saldo += d.kategori==="Uang Masuk" ? +d.jumlah : -d.jumlah;
+    });
+
+    total.innerText = "Saldo: Rp " + saldo.toLocaleString("id-ID");
 }
 
-render();
+loadData();
 </script>
 </body>
 </html>
